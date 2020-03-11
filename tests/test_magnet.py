@@ -10,7 +10,6 @@
 # LICENSE file.
 
 import base64
-import binascii
 import struct
 import unittest
 
@@ -28,7 +27,7 @@ class Test_Magnet(unittest.TestCase):
         hash_s,hash_type,fn = split_magnet_uri(uri_magnet_link)
 
         encoded_hex = encode_magnet_xt(hash_s,hash_type)
-        encoded = binascii.unhexlify(encoded_hex)
+        encoded = bytes.fromhex(encoded_hex)
         t, l, binh = struct.unpack(f"<4x B B {MAX_HASH_LEN}s",encoded)
 
         self.assertTrue(encoded[0:4] == MAGIC_BYTES) # MAGN
@@ -71,9 +70,9 @@ class Test_Magnet(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check_magnet_link(["magnet:?xt=urn:zzhashzz:095d0650e6536e9a7d56345973cf56bb5c5f697d&dn=debian-live-10.3.0-amd64-gnome.iso&tr=http%3A%2F%2Fbttracker.debian.org%3A6969%2Fannounce","btih",20])
         # truncated hashes
-        with self.assertRaises(binascii.Error):
+        with self.assertRaises(ValueError):
             self.check_magnet_link(["magnet:?xt=urn:ed2k:31D6CFE0D16AE931B73C5&xl=0&dn=zero_len.fil&xt=urn:bitprint:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ.LWPNACQDBZRYXW3VHJVCJ64QBZNGHOHHHZWCLNQ&xt=urn:md5:D41D8CD98F00B204E9800998ECF8427E","ed2k",16])
-        with self.assertRaises(binascii.Error):
+        with self.assertRaises(ValueError):
             self.check_magnet_link(["magnet:?xt=urn:tree:tiger:7N5OAMRNGMSSEUE3ORHOKWN4WWIQ5X4EBOOTLJ&xt=urn:btih:QHQXPYWMACKDWKP47RRVIV7VOURXFE5Q","tth",24])
         with self.assertRaises(ValueError):
             self.check_magnet_link(["magnet:?xt=urn:btih:95028fb1ef3059&dn=Night.of.the.Living.Dead.1968","btih",20])

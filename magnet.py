@@ -10,7 +10,6 @@
 # propagated, or distributed except according to the terms contained in the
 # LICENSE file.
 
-import binascii
 import base64
 import struct
 import re
@@ -79,7 +78,7 @@ def encode_magnet_xt(hash_str,hash_type_str):
     if hash_type_str in base32_types:
         hash_bin = base64.b32decode(hash_str)
     else: # hex
-        hash_bin = binascii.unhexlify(hash_str)
+        hash_bin = bytes.fromhex(hash_str)
 
     expected_hash_len = hash_obj_by_name(hash_type_str).length
     len_hash_bin = len(hash_bin)
@@ -102,7 +101,7 @@ def encode_magnet_xt(hash_str,hash_type_str):
 
 def decode_magnet_xt(magnet_data):
 
-    magn_bin = binascii.unhexlify(magnet_data)
+    magn_bin = bytes.fromhex(magnet_data)
 
     if len(magn_bin) != 32 or magn_bin[0:4] != MAGIC_BYTES:
         raise ValueError("Invalid magnet link data")
