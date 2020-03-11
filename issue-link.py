@@ -37,7 +37,7 @@ else:
 magnet_hash,magnet_type,magnet_fn = split_magnet_uri(args.magnet_link)
 
 asset_name = args.asset.upper()
-file_name = args.filename.upper()
+file_name = args.filename
 if file_name == "":
     file_name = magnet_fn
 

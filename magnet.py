@@ -85,10 +85,10 @@ def encode_magnet_xt(hash_str,hash_type_str):
     len_hash_bin = len(hash_bin)
 
     if len_hash_bin > MAX_HASH_LEN:
-        raise ValueError("Hash too long (max {MAX_HASH_LEN} bytes)")
+        raise ValueError(f"Hash too long (max {MAX_HASH_LEN} bytes)")
 
     if len_hash_bin != expected_hash_len:
-        raise ValueError("Hash wrong length {len_hash_bin} (expected {expected_hash_len} bytes)")
+        raise ValueError(f"Hash wrong length {len_hash_bin} (expected {expected_hash_len} bytes)")
 
     hash_type = hash_obj_by_name(hash_type_str).hash_type
 
@@ -163,6 +163,11 @@ def magnet_uri(hash_str,hash_type,fn):
     if hash_type == "tth":
         hash_type = "tree:tiger"
     return f"magnet:?xt=urn:{hash_type}:{hash_str}&dn={fn}"
+
+def magnet_uri_from_data(data,fn):
+    hash_type,hash_str = decode_magnet_xt(data)
+    uri = magnet_uri(hash_str,hash_type,fn)
+    return uri
 
 
 def yes_no(q):
