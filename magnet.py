@@ -13,35 +13,19 @@
 import base64
 import struct
 import re
+from collections import namedtuple
 
-class HashType(object):
-    def __init__(self,hash_type,hash_type_str,expected_length):
-        self.hash_type = hash_type
-        self.hash_type_str = hash_type_str
-        self.length = expected_length
+HashType = namedtuple("HashType", ['hash_type','length','encoding'])
 
-    def __repr__(self):
-        return f"{self.hash_type_str}"
+supported_types = {
+"btih": HashType(0,20,"hex"),
+"ed2k": HashType(1,16,"hex"),
+"sha1": HashType(2,20,"base32"),
+"tth": HashType(3,24,"base32"),
+"btih-32": HashType(4,20,"base32"), # legacy btih
+# 05-ff reserved
+}
 
-    def __hash__(self):
-        return hash(self.hash_type_str)
-
-    def __eq__(self, other):
-        return self.hash_type_str == other
-
-hex_types = frozenset([
-HashType(0,"btih",20),
-HashType(1,"ed2k",16),
-])
-
-base32_types = frozenset([
-HashType(2,"sha1",20),
-HashType(3,"tth",24),
-])
-
-# 04-ff reserved
-
-supported_types = frozenset(hex_types | base32_types)
 
 TXID_HASH_LEN = 32 # length in bytes of Raven txid hash data
 
@@ -49,15 +33,14 @@ MAGIC_BYTES = b"\x4d\x41\x47\x4e" # MAGN
 MAX_HASH_LEN = TXID_HASH_LEN-(len(MAGIC_BYTES)+1+1)
 
 def hash_str_from_type(hash_type):
-    for item in supported_types:
+    for key,item in supported_types.items():
          if item.hash_type == hash_type:
-             return item.hash_type_str
+             return key
 
 def hash_obj_by_name(hash_type_str):
-    for item in supported_types:
-        if item.hash_type_str == hash_type_str:
-            return item
+    return supported_types.get(hash_type_str,None)
 
+non_hex_chars = re.compile("[^0-9A-F]")
 
 def encode_magnet_xt(hash_str,hash_type_str):
 
@@ -72,15 +55,22 @@ def encode_magnet_xt(hash_str,hash_type_str):
     if hash_type_str == "tree:tiger":
         hash_type_str = "tth"
 
+    if hash_type_str == "btih" and non_hex_chars.match(hash_str.upper()):
+        hash_type_str = "btih-32"
+
     if hash_type_str not in supported_types:
         raise ValueError(f"Unsupported hash type {hash_type_str}")
 
-    if hash_type_str in base32_types:
-        hash_bin = base64.b32decode(hash_str)
-    else: # hex
-        hash_bin = bytes.fromhex(hash_str)
+    hash_obj = hash_obj_by_name(hash_type_str)
 
-    expected_hash_len = hash_obj_by_name(hash_type_str).length
+    if hash_obj.encoding == "base32":
+        hash_bin = base64.b32decode(hash_str)
+    elif hash_obj.encoding == "hex":
+        hash_bin = bytes.fromhex(hash_str)
+    else:
+        raise ValueError(f"unknown encoding for {hash_type_str}")
+
+    expected_hash_len = hash_obj.length
     len_hash_bin = len(hash_bin)
 
     if len_hash_bin > MAX_HASH_LEN:
@@ -89,7 +79,7 @@ def encode_magnet_xt(hash_str,hash_type_str):
     if len_hash_bin != expected_hash_len:
         raise ValueError(f"Hash wrong length {len_hash_bin} (expected {expected_hash_len} bytes)")
 
-    hash_type = hash_obj_by_name(hash_type_str).hash_type
+    hash_type = hash_obj.hash_type
 
     len_diff = MAX_HASH_LEN - len_hash_bin
     hash_bin += b"\x00" * len_diff # pad with zeros
@@ -111,10 +101,14 @@ def decode_magnet_xt(magnet_data):
     hash_type_str = hash_str_from_type(hash_type)
     hash_bin = hash_bin[0:len_hash_bin]
 
-    if hash_type_str in base32_types:
+    hash_obj = hash_obj_by_name(hash_type_str)
+
+    if hash_obj.encoding == "base32":
         hash_str = base64.b32encode(hash_bin).decode("ascii")
-    else: # hex
+    elif hash_obj.encoding == "hex":
         hash_str = hash_bin.hex()
+    else:
+        raise ValueError(f"Unsupported encoding {hash_obj.encoding}")
 
     return hash_type_str,hash_str
 
@@ -147,7 +141,10 @@ def split_magnet_uri(uri):
        except Exception:
            pass
 
-    if magnet_type in base32_types:
+    if magnet_type == "btih" and non_hex_chars.match(magnet_hash.upper()): # base32 btih
+        magnet_type = "btih-32"
+
+    if hash_obj_by_name(magnet_type).encoding == "base32":
         missing_padding = len(magnet_hash) % 4 # if padding stripped from base32 hash we need to add it back
         if missing_padding:
             magnet_hash += '=' * (4 - missing_padding)
@@ -159,8 +156,12 @@ def split_magnet_uri(uri):
 
 
 def magnet_uri(hash_str,hash_type,fn):
+    if hash_obj_by_name(hash_type).encoding == "base32":
+        hash_str = hash_str.upper()
     if hash_type == "tth":
         hash_type = "tree:tiger"
+    if hash_type == "btih-32":
+        hash_type = "btih"
     return f"magnet:?xt=urn:{hash_type}:{hash_str}&dn={fn}"
 
 def magnet_uri_from_data(data,fn):

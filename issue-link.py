@@ -27,6 +27,7 @@ parser.add_argument("magnet_link", help="Magnet link (e.g. magnet:?xt=urn:btih:9
 parser.add_argument("--filename", type=str, default="", help="Magnet link filename (e.g. NIGHT.OF.THE.LIVING.DEAD)")
 parser.add_argument("--datadir", help="Path to Raven config directory")
 parser.add_argument("--testnet", help="Use Raven testnet",action="store_true")
+parser.add_argument("--dryrun", help="Don't issue asset, print data to console instead",action="store_true")
 args=parser.parse_args()
 
 if args.testnet:
@@ -52,7 +53,9 @@ hash_data = encode_magnet_xt(magnet_hash,magnet_type)
 rvn = RavenProxy(datadir=args.datadir)
 
 try:
-   if yes_no(f"Issuing asset {asset} with magnet hash {magnet_hash}, proceed? (Testnet: {args.testnet})"):
+   if args.dryrun:
+       print(f"Asset name: {asset}, Magnet hash: {magnet_hash}, Encoded hash: {hash_data}")
+   elif yes_no(f"Issuing asset {asset} with magnet hash {magnet_hash}, proceed? (Testnet: {args.testnet})"):
        txid = b2lx(rvn.issue(asset, 1, "", "", 0, False, True, hash_data))
        print(f"txid: {txid}")
 except Exception as e:

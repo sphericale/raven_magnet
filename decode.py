@@ -18,6 +18,9 @@ parser.add_argument("asset", help="Name of asset")
 parser.add_argument("data", help="Hex encoded magnet link data")
 args=parser.parse_args()
 
-fn = args.asset.split('#')[1]
+if '#' in args.asset:
+    fn = args.asset.split('#')[1]
+else:
+    fn = args.asset
 print(magnet_uri_from_data(args.data,fn))
 

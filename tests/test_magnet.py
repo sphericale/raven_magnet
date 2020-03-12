@@ -13,7 +13,7 @@ import base64
 import struct
 import unittest
 
-from magnet import split_magnet_uri, encode_magnet_xt, MAGIC_BYTES, MAX_HASH_LEN, hash_obj_by_name, base32_types
+from magnet import split_magnet_uri, encode_magnet_xt, MAGIC_BYTES, MAX_HASH_LEN, hash_obj_by_name, supported_types
 
 
 class Test_Magnet(unittest.TestCase):
@@ -34,10 +34,14 @@ class Test_Magnet(unittest.TestCase):
         self.assertTrue(t == uri_hash_type) # hash type
         self.assertTrue(l == uri_hash_len) # length of hash
 
-        if hash_type in base32_types:
+        hash_obj = hash_obj_by_name(hash_type)
+
+        if hash_obj.encoding == "base32":
             h = base64.b32encode(binh[:l]).decode("ascii")
-        else:
+        elif hash_obj.encoding == "hex":
             h = binh[:l].hex()
+        else:
+            raise ValueError("Unsupported encoding {hash_obj.encoding}")
 
         self.assertTrue(h.lower() == hash_s.lower()) # hash
 
@@ -64,10 +68,10 @@ class Test_Magnet(unittest.TestCase):
             encode_magnet_xt("95028fb1ef3059321eac737f7d583c2a0eeda130","FFFFFFFFF") # bad hash type
 
         # malformed link
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AttributeError):
             self.check_magnet_link(["magnet:urn:btih:95028fb1ef3059321eac737f7d583c2a0eeda130&dn=Night.of.the.Living.Dead.1968","btih",20])
         # unsupported hash type
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AttributeError):
             self.check_magnet_link(["magnet:?xt=urn:zzhashzz:095d0650e6536e9a7d56345973cf56bb5c5f697d&dn=debian-live-10.3.0-amd64-gnome.iso&tr=http%3A%2F%2Fbttracker.debian.org%3A6969%2Fannounce","btih",20])
         # truncated hashes
         with self.assertRaises(ValueError):
